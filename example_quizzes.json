@@ -1,0 +1,20 @@
+{
+    "quizzes": [
+        {
+            "title": "Test",
+            "description": "Hello World!",
+            "imageQuizz": "test.png",
+            "created_by": "Steven Avelino",
+            "number_participants": 0,
+            "id": "5c111f9f1b25c00581064607"
+        },
+        {
+            "title": "Test",
+            "description": "Hello World!",
+            "imageQuizz": "test.png",
+            "created_by": "Steven Avelino",
+            "number_participants": 0,
+            "id": "5c111f9f1b25c00581064607"
+        }
+    ]
+}
