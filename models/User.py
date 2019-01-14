@@ -6,3 +6,5 @@ class User(Document):
     token = StringField(required=True)
     scores = ListField(DictField(defaultdict={}))
     admin = BooleanField(required=True, default=False)
+    creator = BooleanField(required=True, default=False)
+    guest = BooleanField(required=True, default=False)
