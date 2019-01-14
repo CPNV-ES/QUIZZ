@@ -11,7 +11,7 @@ from models.User import User
 from models.Quizz import Quizz
 from models.Question import Question
 from utils.token_management import encrypt, decrypt
-from utils.security import pwd_context, check_token
+from utils.security import pwd_context, check_token, check_guest
 
 # Connect to the mongoDB database
 connect('awa_quizzes')
@@ -83,7 +83,7 @@ Parameters :
 @api.route('/api/make-admin/{id}')
 def make_admin(req, resp, *, id):
     if (req.method == 'post'):
-        if (check_token(req.headers['quizz-token'], True)):
+        if (check_token(req.headers['quizz-token'], True, False)):
             user = User.objects.get(id=id)
             user.admin = True
             user.save(validate=True)
@@ -108,7 +108,7 @@ async def questions(req, resp):
     # Check the HTTP request method
     if (req.method == 'get'):
         # Check if user is authenticated
-        if (check_token(req.headers['quizz-token'], False)):
+        if (check_token(req.headers['quizz-token'], False, False)):
             resp.status_code = api.status_codes.HTTP_200
             resp.media = {'questions': json.loads(Question.objects.all().to_json())}
         # If not, a message will notify the user
@@ -117,7 +117,7 @@ async def questions(req, resp):
             resp.media = {'message': 'Not authenticated'}
     elif (req.method == 'post'):
         # Check if the user is authenticated and is admin
-        if (check_token(req.headers['quizz-token'], True)):
+        if (check_token(req.headers['quizz-token'], False, True)):
             try:
                 data = await req.media()
                 # Check if the question has at least 2 answers and 4 or less answers
@@ -161,7 +161,7 @@ return the question selected
 @api.route('/api/questions/{id}')
 async def questions_id(req, resp, *, id):
     # Check if user is authenticated and admin if method is not get
-    if check_token(req.headers['quizz-token'], False if req.method == 'get' else True):
+    if check_token(req.headers['quizz-token'], False, False if req.method == 'get' else True):
          # Get the question with the id in the request
         question = Question.objects.get(id=id)
         # Check if question exists
@@ -238,7 +238,7 @@ Returns a successful message if quizz was created
 @api.route('/api/quizzes')
 async def quizzes(req, resp):
     # Check if user is authenticated and admin if method is not get
-    if check_token(req.headers['quizz-token'], False if req.method == 'get' else True):
+    if check_token(req.headers['quizz-token'], False, False if req.method == 'get' else True):
         if req.method == 'get':
             # Return all quizzes
             resp.status_code = api.status_codes.HTTP_200
@@ -296,7 +296,7 @@ Returns the quizz that was edited or deleted
 @api.route('/api/quizzes/{id}')
 async def quizzes_id(req, resp, *, id):
     # Check if user is authenticated and admin
-    if check_token(req.headers['quizz-token'], False if req.method == 'get' else True):
+    if check_token(req.headers['quizz-token'], False, False if req.method == 'get' else True):
         # Get the quizz from the id in the request
         quizz = Quizz.objects.get(id=id)
         # Check if the quizz exists
@@ -367,22 +367,23 @@ Returns a successful message
 '''
 @api.route('/api/participate/{id}')
 async def submit_quizz(req, resp, *, id):
-    if check_token(req.headers['quizz-token'], False):
+    if check_token(req.headers['quizz-token'], False, False):
         quizz = Quizz.objects.get(id=id)
         if quizz:
             data = await req.media()
-            user = User.objects.get(token=req.headers['quizz-token'])
-            found = False
-            for index, score in enumerate(user.scores):
-                if score['quizz_id'] == quizz.pk:
-                    found = True
-                    if score['score'] < data['score']:
-                        user.scores[index]['score'] = data['score']
-            if not found:
-                user.scores.append({ 'quizz_id': quizz.pk, 'score': data['score'] })
-                quizz.number_participants += 1
-                quizz.save(validate=True)
-            user.save(validate=True)
+            if not check_guest(req.headers['quizz-token']):
+                user = User.objects.get(token=req.headers['quizz-token'])
+                found = False
+                for index, score in enumerate(user.scores):
+                    if score['quizz_id'] == quizz.pk:
+                        found = True
+                        if score['score'] < data['score']:
+                            user.scores[index]['score'] = data['score']
+                if not found:
+                    user.scores.append({ 'quizz_id': quizz.pk, 'score': data['score'] })
+                    quizz.number_participants += 1
+                    quizz.save(validate=True)
+                user.save(validate=True)
             for question in data['questions']:
                 db_question = Question.objects.get(id=question['id'])
                 db_question.number_answered += 1
