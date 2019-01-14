@@ -42,7 +42,7 @@ async def register(req, resp):
     except ValidationError as validation_error:
         # Returns the error if the data sent wasn't compliant
         resp.status_code = api.status_codes.HTTP_401
-        resp.media = {'type': 'error', 'message': validation_error}
+        resp.media = {'message': validation_error}
 
 '''
 Login endpoint
@@ -66,11 +66,11 @@ async def login(req, resp):
         else:
             # Returns an error if passwords don't match
             resp.status_code = api.status_codes.HTTP_403
-            resp.media = {'type': 'error', 'message': 'The password is not correct'}
+            resp.media = {'message': 'The password is not correct'}
     else:
         # If user doesn't exist, notify the frontend
         resp.status_code = api.status_codes.HTTP_403
-        resp.media = {'type': 'error', 'message': 'This username doesn\'t exist'}
+        resp.media = {'message': 'This username doesn\'t exist'}
 
 '''
 Route to give the admin role to user
@@ -89,10 +89,10 @@ def make_admin(req, resp, *, id):
             user.save(validate=True)
 
             resp.status_code = api.status_codes.HTTP_200
-            resp.media = {'type': 'success', 'user': user}
+            resp.media = {'user': user}
         else:
             resp.status_code = api.status_codes.HTTP_403
-            resp.media = {'type': 'error', 'message': 'Not authenticated or not authorized'}
+            resp.media = {'message': 'Not authenticated or not authorized'}
 
 '''
 POST and GET endpoints for Questions
@@ -110,11 +110,11 @@ async def questions(req, resp):
         # Check if user is authenticated
         if (check_token(req.headers['quizz-token'], False)):
             resp.status_code = api.status_codes.HTTP_200
-            resp.media = {'type': 'success', 'questions': json.loads(Question.objects.all().to_json())}
+            resp.media = {'questions': json.loads(Question.objects.all().to_json())}
         # If not, a message will notify the user
         else:
             resp.status_code = api.status_codes.HTTP_403
-            resp.media = {'type': 'error', 'message': 'Not authenticated'}
+            resp.media = {'message': 'Not authenticated'}
     elif (req.method == 'post'):
         # Check if the user is authenticated and is admin
         if (check_token(req.headers['quizz-token'], True)):
@@ -128,25 +128,26 @@ async def questions(req, resp):
                             continue
                         else:
                             resp.status_code = api.status_codes.HTTP_401
-                            resp.media = {'type': 'error', 'message': 'data sent isn\'t valid'}
-                    # Create the question
-                    new_question = Question(name=data['name'], answers=data['answers'])
-                    new_question.save(validate=True)
-                    # Return a successful message to the frontend
-                    resp.status_code = api.status_codes.HTTP_200
-                    resp.media = {'type': 'success', 'message': f"Question : {data['name']} was created"}
+                            resp.media = {'message': 'data sent isn\'t valid'}
+                    if 'question' in data and 'image' in data:
+                        # Create the question
+                        new_question = Question(question=data['question'], image=data['image'], answers=data['answers'])
+                        new_question.save(validate=True)
+                        # Return a successful message to the frontend
+                        resp.status_code = api.status_codes.HTTP_200
+                        resp.media = {'message': f"Question : {data['question']} was created"}
                 else:
                     resp.status_code = api.status_codes.HTTP_401
-                    resp.media = {'type': 'error', 'message': 'A question must have between 2 and 4 answers'}
+                    resp.media = {'message': 'A question must have between 2 and 4 answers'}
             # If data sent is not valid
             except ValidationError as validation_error:
                 # Return an error message
                 resp.status_code = api.status_codes.HTTP_401
-                resp.media = {'type': 'error', 'message': validation_error}
+                resp.media = {'message': validation_error}
         else:
             # Return an error message if user is not authenticated or admin
             resp.status_code = api.status_codes.HTTP_403
-            resp.media = {'type': 'error', 'message': 'Not authenticated or not admin'}
+            resp.media = {'message': 'Not authenticated or not admin'}
 
 '''
 PUT and DELETE method for questions
@@ -169,7 +170,7 @@ async def questions_id(req, resp, *, id):
             if req.method == 'get':
                 # Return question
                 resp.status_code = api.status_codes.HTTP_200
-                resp.media = {'type': 'success', 'question': json.loads(question.to_json())}
+                resp.media = {'question': json.loads(question.to_json())}
             # Block for delete method
             elif req.method == 'delete':
                 try:
@@ -177,11 +178,11 @@ async def questions_id(req, resp, *, id):
                     question.delete()
                     # Return the deleted question
                     resp.status_code = api.status_codes.HTTP_200
-                    resp.media = {'type': 'success', 'question': json.loads(question.to_json())}
+                    resp.media = {'question': json.loads(question.to_json())}
                 # Return an error if question can't be deleted
                 except Exception as e:
                     resp.status_code = api.status_codes.HTTP_401
-                    resp.media = {'type': 'error', 'message': e}
+                    resp.media = {'message': e}
             # Block for put or patch method
             elif req.method == 'put' or req.method == 'patch':
                 try:
@@ -195,34 +196,36 @@ async def questions_id(req, resp, *, id):
                                 continue
                             else:
                                 resp.status_code = api.status_codes.HTTP_401
-                                resp.media = {'type': 'error', 'message': 'data sent isn\'t valid'}
-                        # Assign the new values and save it 
-                        question.name = data['name']
-                        question.answers = data['answers']
-                        question.save()
-                        # Return the question if successful
-                        resp.status_code = api.status_codes.HTTP_200
-                        resp.media = {'type': 'success', 'question': json.loads(question.to_json())}
+                                resp.media = {'message': 'data sent isn\'t valid'}
+                        # Assign the new values and save it
+                        if 'question' in data and 'image' in data:
+                            question.question = data['question']
+                            question.image = data['image']
+                            question.answers = data['answers']
+                            question.save()
+                            # Return the question if successful
+                            resp.status_code = api.status_codes.HTTP_200
+                            resp.media = {'question': json.loads(question.to_json())}
                     else:
                         # Return an error if the number answers is incorrect
                         resp.status_code = api.status_codes.HTTP_401
-                        resp.media = {'type': 'error', 'message': 'A question must have between 2 and 4 answers'}
+                        resp.media = {'message': 'A question must have between 2 and 4 answers'}
                 # Throw an error if data wasn't valid
                 except ValidationError as validation_error:
                     resp.status_code = api.status_codes.HTTP_401
-                    resp.media = {'type': 'error', 'message': validation_error}
+                    resp.media = {'message': validation_error}
             else:
                 # Return error if the HTTP Verb is wrong
                 resp.status_code = api.status_codes.HTTP_401
-                resp.media = {'type': 'error', 'message': 'Wrong HTTP Verb'}
+                resp.media = {'message': 'Wrong HTTP Verb'}
         else:
             # Return an error if the question was not foun
             resp.status_code = api.status_codes.HTTP_401
-            resp.media = {'type': 'error', 'message': 'Question was not found'}
+            resp.media = {'message': 'Question was not found'}
     else:
         # Return an error if the user is not authenticated
         resp.status_code = api.status_codes.HTTP_403
-        resp.media = {'type': 'error', 'message': 'Not authenticated'}
+        resp.media = {'message': 'Not authenticated'}
 
 '''
 POST and GET endpoints for quizzes
@@ -239,7 +242,7 @@ async def quizzes(req, resp):
         if req.method == 'get':
             # Return all quizzes
             resp.status_code = api.status_codes.HTTP_200
-            resp.media = {'type': 'success', 'quizzes': json.loads(Quizz.objects.all().to_json())}
+            resp.media = {'quizzes': json.loads(Quizz.objects.all().to_json())}
         elif req.method == 'post':
             try:
                 questions = []
@@ -252,15 +255,15 @@ async def quizzes(req, resp):
                 # Check if more than 2 questions
                 if len(questions) >= 2:
                     # Check if data sent has all informations needed
-                    if 'name' in data and 'description' in data and 'image' in data:
+                    if 'title' in data and 'description' in data and 'image' in data:
                         # Get the user to put in created_by
                         user = User.objects.get(token=req.headers['quizz-token'])
                         # Create quizz
-                        new_quizz = Quizz(name=data['name'], description=data['description'], image=data['image'], questions=questions, created_by=user)
+                        new_quizz = Quizz(title=data['title'], description=data['description'], image=data['image'], questions=questions, created_by=user)
                         new_quizz.save(validate=True)
                         # Return the new quizz
                         resp.status_code = api.status_codes.HTTP_200
-                        resp.media = {'type': 'success', 'quizz': json.loads(new_quizz.to_json())}
+                        resp.media = {'quizz': json.loads(new_quizz.to_json())}
                     else:
                         resp.status_code = api.status_codes.HTTP_401
                         resp.media = {'type': 'error', 'message': 'Data sent not valid'}
@@ -299,9 +302,12 @@ async def quizzes_id(req, resp, *, id):
         # Check if the quizz exists
         if (quizz):
             if req.method == 'get':
+                questions = []
+                for question in quizz.questions:
+                    questions.append({'question': question.question, 'image': question.image, 'answers': question.answers})
                 # Returns question
                 resp.status_code = api.status_codes.HTTP_200
-                resp.media = {'type': 'success', 'quizz': json.loads(quizz.to_json())}
+                resp.media = {'id': str(quizz.pk), 'title': quizz.title, 'description': quizz.description, 'created_by': quizz.created_by.username, 'questions': questions, 'number_participants': quizz.number_participants}
             # Put/Patch method block
             if (req.method == 'put' or req.method == 'patch'):
                 try:
@@ -309,7 +315,10 @@ async def quizzes_id(req, resp, *, id):
                     # Get the data from the request
                     data = await req.media()
                     # Update the quizz
-                    quizz.name = data['name']
+                    if 'title' in data and 'description' in data and 'image' in data:
+                        quizz.title = data['title']
+                        quizz.decription = data['decription']
+                        quizz.image = data['image']
                     for question_id in data['questions']:
                         quizz_answer = Question.objects.get(id=question_id)
                         questions.append(quizz_answer)
@@ -318,34 +327,34 @@ async def quizzes_id(req, resp, *, id):
                     else:
                         # Return an error if not 2 questions or more
                         resp.status_codes = api.status_codes.HTTP_401
-                        resp.media = {'type': 'error', 'message': 'Not enough questions'}
+                        resp.media = {'message': 'Not enough questions'}
                     quizz.save()
                     # Return the updated quizz
                     resp.status_code = api.status_codes.HTTP_200
-                    resp.media = {'type': 'success', 'quizz': quizz}
+                    resp.media = {'quizz': quizz}
                 # Catch a validation error
                 except ValidationError as validation_error:
                     # Throw an error
                     resp.status_code = api.status_codes.HTTP_401
-                    resp.media = {'type': 'error', 'message': validation_error}
+                    resp.media = {'message': validation_error}
             elif (req.method is 'delete'):
                 try:
                     # Delete the quizz
                     quizz.delete()
                     resp.status_code = api.status_codes.HTTP_200
-                    resp.media = {'type': 'success', 'quizz': quizz}
+                    resp.media = {'quizz': quizz}
                 except Exception as e:
                     # Throw an error if something occured
                     resp.status_code = api.status_codes.HTTP_401
-                    resp.media = {'type': 'error', 'message': e}
+                    resp.media = {'message': e}
         # If quizz doesn't exist, throw an error
         else:
             resp.status_code = api.status_codes.HTTP_401
-            resp.media = {'type': 'error', 'message': 'The quizz couldn\'t be found'}
+            resp.media = {'message': 'The quizz couldn\'t be found'}
     # Throw an error if user is not authenticated or an admin
     else:
         resp.status_code = api.status_codes.HTTP_403
-        resp.media = {'type': 'error', 'message': 'Not authenticated or not admin'}
+        resp.media = {'message': 'Not authenticated or not admin'}
 
 
 '''
@@ -381,12 +390,12 @@ async def submit_quizz(req, resp, *, id):
                     db_question.number_right += 1
                 db_question.save(validate=True)
             resp.status_code = api.status_codes.HTTP_200
-            resp.media = {'type': 'success', 'message': 'quizz successfully answered'}
+            resp.media = {'message': 'quizz successfully answered'}
         else:
             resp.status_code = api.status_codes.HTTP_401
-            resp.media = {'type': 'error', 'message': 'The quizz couldn\'t be found'}
+            resp.media = {'message': 'The quizz couldn\'t be found'}
     else:
         resp.status_code = api.status_codes.HTTP_403
-        resp.media = {'type': 'error', 'message': 'Not authenticated'}
+        resp.media = {'message': 'Not authenticated'}
 
 api.run()
