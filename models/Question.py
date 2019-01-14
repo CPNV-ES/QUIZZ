@@ -6,9 +6,9 @@ class CustomQuerySet(QuerySet):
         return "[%s]" % (",".join([doc.to_json() for doc in self]))
 
 class Question(Document):
-    name = StringField(required=True, max_length=255)
+    question = StringField(required=True, max_length=255)
     answers = ListField(DictField())
-    image = ImageField()
+    image = StringField()
     number_answered = IntField(default=0)
     number_right = IntField(default=0)
 
