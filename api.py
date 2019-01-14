@@ -12,9 +12,14 @@ from models.Quizz import Quizz
 from models.Question import Question
 from utils.token_management import encrypt, decrypt
 from utils.security import pwd_context, check_token, check_guest
+import os
 
 # Connect to the mongoDB database
-connect('awa_quizzes')
+if os.environ.get('IS_HEROKU'):
+    connect('awa_quizzes', host=f"mongodb://{os.environ.get('DB_USER')}:{os.environ.get('DB_PASSWORD')}@ds117209.mlab.com:17209/awa_quizzes")
+else:
+    connect('awa_quizzes')
+
 # Create the responder API instance
 api = responder.API()
 
