@@ -108,7 +108,7 @@ async def questions(req, resp):
     # Check the HTTP request method
     if (req.method == 'get'):
         # Check if user is authenticated
-        if (check_token(req.headers['quizz-token'], False, False)):
+        if (check_token(req.headers['quizz-token'], False, True)):
             resp.status_code = api.status_codes.HTTP_200
             resp.media = {'questions': json.loads(Question.objects.all().to_json())}
         # If not, a message will notify the user
@@ -161,7 +161,7 @@ return the question selected
 @api.route('/api/questions/{id}')
 async def questions_id(req, resp, *, id):
     # Check if user is authenticated and admin if method is not get
-    if check_token(req.headers['quizz-token'], False, False if req.method == 'get' else True):
+    if check_token(req.headers['quizz-token'], False, True):
          # Get the question with the id in the request
         question = Question.objects.get(id=id)
         # Check if question exists
