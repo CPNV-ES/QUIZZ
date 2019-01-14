@@ -373,7 +373,7 @@ async def submit_quizz(req, resp, *, id):
             data = await req.media()
             user = User.objects.get(token=req.headers['quizz-token'])
             found = False
-            for index, score in user.scores:
+            for index, score in enumerate(user.scores):
                 if score['quizz_id'] == quizz.pk:
                     found = True
                     if score['score'] < data['score']:
@@ -384,9 +384,9 @@ async def submit_quizz(req, resp, *, id):
                 quizz.save(validate=True)
             user.save(validate=True)
             for question in data['questions']:
-                db_question = Question.objects.get(id=question.id)
+                db_question = Question.objects.get(id=question['id'])
                 db_question.number_answered += 1
-                if question.right:
+                if question['right']:
                     db_question.number_right += 1
                 db_question.save(validate=True)
             resp.status_code = api.status_codes.HTTP_200
