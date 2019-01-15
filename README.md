@@ -34,3 +34,22 @@ You can simply run this command inside the project folder :
 ```bash
 pipenv run python3 api.py
 ```
+
+## API routes documentation
+
+[Link to the doc](./docs/Usage.md)
+
+## API Architecture documentation
+
+[Link to the doc](./docs/Architecture.md)
+
+## Dev documentation
+
+[Link to the doc](./docs/Dev.md)
+
+## Links
+
+* [Responder docs](https://python-responder.org/en/latest/quickstart.html)
+* [Mongoengine docs](http://docs.mongoengine.org/index.html)
+* [Pyjwt docs](https://pyjwt.readthedocs.io/en/latest/)
+* [Passlib docs](https://passlib.readthedocs.io/en/stable/)
