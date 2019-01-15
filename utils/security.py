@@ -1,3 +1,8 @@
+'''
+File for all security or authorization related methods
+
+Author : Steven Avelino
+'''
 from passlib.context import CryptContext
 from models.User import User
 from .token_management import decrypt

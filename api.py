@@ -14,7 +14,13 @@ from utils.token_management import encrypt, decrypt
 from utils.security import pwd_context, check_token, check_guest
 import os
 
-# Connect to the mongoDB database
+'''
+Connect to the database
+
+Connect to the mlab Database if the env variable IS_HEROKU is set to True
+
+Else, just use a local database
+'''
 if os.environ.get('IS_HEROKU'):
     connect('awa_quizzes', host=f"mongodb://{os.environ.get('DB_USER')}:{os.environ.get('DB_PASSWORD')}@ds117209.mlab.com:17209/awa_quizzes")
 else:
@@ -90,6 +96,7 @@ def make_admin(req, resp, *, id):
     if (req.method == 'put' or req.method == 'patch'):
         if (check_token(req.headers['quizz-token'], True, False)):
             user = User.objects.get(id=id)
+            # Check if the user is a guest
             if user.guest == True:
                 resp.status_code = api.status_codes.HTTP_403
                 resp.media = {'message': 'user is a guest'}
@@ -428,26 +435,36 @@ Returns a successful message
 '''
 @api.route('/api/participate/{id}')
 async def submit_quizz(req, resp, *, id):
+    # Anybody can use this route as long as authenticated
     if check_token(req.headers['quizz-token'], False, False):
+        # Check if the quizz exists
         quizz = Quizz.objects.get(id=id)
         if quizz:
             data = await req.media()
+            # Check if the user is not a guest
             if not check_guest(req.headers['quizz-token']):
+                # If not, add the quizz score to the authenticated user
                 user = User.objects.get(token=req.headers['quizz-token'])
+                # Flag to check if the user already played this quizz
                 found = False
                 for index, score in enumerate(user.scores):
+                    # If user already played, check if the score was better than before
                     if score['quizz_id'] == quizz.pk:
                         found = True
                         if score['score'] < data['score']:
                             user.scores[index]['score'] = data['score']
+                # Add the quizz if not found and add a participant to the quizz
                 if not found:
                     user.scores.append({ 'quizz_id': quizz.pk, 'score': data['score'] })
                     quizz.number_participants += 1
                     quizz.save(validate=True)
                 user.save(validate=True)
+            # Get the questions answered
             for question in data['questions']:
                 db_question = Question.objects.get(id=question['id'])
+                # Add an answered
                 db_question.number_answered += 1
+                # If the user got it right, add a correct answer to the question
                 if question['right']:
                     db_question.number_right += 1
                 db_question.save(validate=True)
