@@ -87,14 +87,70 @@ Parameters :
 '''
 @api.route('/api/make-admin/{id}')
 def make_admin(req, resp, *, id):
-    if (req.method == 'post'):
+    if (req.method == 'put' or req.method == 'patch'):
         if (check_token(req.headers['quizz-token'], True, False)):
             user = User.objects.get(id=id)
-            user.admin = True
-            user.save(validate=True)
+            if user.guest == True:
+                resp.status_code = api.status_codes.HTTP_403
+                resp.media = {'message': 'user is a guest'}
+            else:
+                user.admin = True
+                user.save(validate=True)
 
-            resp.status_code = api.status_codes.HTTP_200
-            resp.media = {'user': user}
+                resp.status_code = api.status_codes.HTTP_200
+                resp.media = {'user': user}
+        else:
+            resp.status_code = api.status_codes.HTTP_403
+            resp.media = {'message': 'Not authenticated or not authorized'}
+
+'''
+Route to give the creator role to user
+
+The user calling this route must be an admin
+
+Parameters :
+    - id : id of the user to give the creator role
+'''
+@api.route('/api/make-creator/{id}')
+def make_creator(req, resp, *, id):
+    if (req.method == 'put' or req.method == 'patch'):
+        if (check_token(req.headers['quizz-token'], True, False)):
+            user = User.objects.get(id=id)
+            if user.admin == True or user.guest == True:
+                resp.status_code = api.status_codes.HTTP_200
+                resp.media = {'message': 'User already an admin or a guest'}
+            else:
+                user.creator = True
+                user.save(validate=True)
+
+                resp.status_code = api.status_codes.HTTP_200
+                resp.media = {'user': user}
+        else:
+            resp.status_code = api.status_codes.HTTP_403
+            resp.media = {'message': 'Not authenticated or not authorized'}
+
+'''
+Route to give the guest role to user
+
+The user calling this route must be an admin
+
+Parameters :
+    - id : id of the user to give the guest role
+'''
+@api.route('/api/make-guest/{id}')
+def make_guest(req, resp, *, id):
+    if (req.method == 'put' or req.method == 'patch'):
+        if (check_token(req.headers['quizz-token'], True, False)):
+            user = User.objects.get(id=id)
+            if user.admin == True or user.creator == True:
+                resp.status_code = api.status_codes.HTTP_401
+                resp.media = {'message': 'User already an admin or a creator'}
+            else:
+                user.guest = True
+                user.save(validate=True)
+
+                resp.status_code = api.status_codes.HTTP_200
+                resp.media = {'user': user}
         else:
             resp.status_code = api.status_codes.HTTP_403
             resp.media = {'message': 'Not authenticated or not authorized'}
