@@ -1,7 +1,7 @@
 '''
 Main file for the API
 
-author : Steven Avelino <steven.avelino@cpnv.ch
+Author : Steven Avelino <steven.avelino@cpnv.ch
 '''
 
 import responder
@@ -177,8 +177,13 @@ async def questions(req, resp):
     if (req.method == 'get'):
         # Check if user is authenticated
         if (check_token(req.headers['quizz-token'], False, True)):
+            # Get the user
+            user = User.objects.get(token=req.headers['quizz-token'])
             resp.status_code = api.status_codes.HTTP_200
-            resp.media = {'questions': json.loads(Question.objects.all().to_json())}
+            if user.admin == True:
+                resp.media = {'questions': json.loads(Question.objects.all().to_json())}
+            else:
+                resp.media = {'questions': json.loads(Question.objects(created_by=user).to_json())}
         # If not, a message will notify the user
         else:
             resp.status_code = api.status_codes.HTTP_403
@@ -198,12 +203,14 @@ async def questions(req, resp):
                             resp.status_code = api.status_codes.HTTP_401
                             resp.media = {'message': 'data sent isn\'t valid'}
                     if 'question' in data and 'image' in data:
+                        # Get the user to put in created_by
+                        user = User.objects.get(token=req.headers['quizz-token'])
                         # Create the question
-                        new_question = Question(question=data['question'], image=data['image'], answers=data['answers'])
+                        new_question = Question(question=data['question'], image=data['image'], answers=data['answers'], created_by=user)
                         new_question.save(validate=True)
                         # Return a successful message to the frontend
                         resp.status_code = api.status_codes.HTTP_200
-                        resp.media = {'message': f"Question : {data['question']} was created"}
+                        resp.media = {'question': json.loads(new_question.to_json())}
                 else:
                     resp.status_code = api.status_codes.HTTP_401
                     resp.media = {'message': 'A question must have between 2 and 4 answers'}
