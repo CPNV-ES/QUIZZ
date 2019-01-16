@@ -5,6 +5,7 @@ Author : Steven Avelino
 '''
 from mongoengine import *
 from bson import json_util
+from .User import User
 
 '''
 Custom queryset for the class
@@ -22,6 +23,7 @@ class Question(Document):
     question = StringField(required=True, max_length=255)
     answers = ListField(DictField())
     image = StringField()
+    created_by = ReferenceField(User)
     number_answered = IntField(default=0)
     number_right = IntField(default=0)
 
@@ -36,5 +38,7 @@ class Question(Document):
         data.pop('_id')
         # Add a correctly formatted id key in the dict
         data['id'] = str(self.pk)
+        # Add a created_by
+        data['created_by'] = {"id": str(self.created_by.pk), "username": self.created_by.username}
         # Return the dict as JSON
         return json_util.dumps(data)
