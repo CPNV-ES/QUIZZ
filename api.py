@@ -40,16 +40,21 @@ Returns the token for the user
 async def register(req, resp):
     try:
         data = await req.media()
-        # Encrypt the password
-        encrypted_password = pwd_context.encrypt(data['password'])
-        # Create the JWT token from the username and the password
-        token = encrypt(data['username'], encrypted_password)
-        # Create the user in MongoDB
-        new_user = User(username=data['username'], token=token, password=encrypted_password)
-        new_user.save(validate=True)
-        # Return the token to the frontend
-        resp.status_code = api.status_codes.HTTP_200
-        resp.media = {'token': str(token)}
+        # Check if data sent is valid
+        if 'username' in data and 'password' in data:
+            # Encrypt the password
+            encrypted_password = pwd_context.encrypt(data['password'])
+            # Create the JWT token from the username and the password
+            token = encrypt(data['username'], encrypted_password)
+            # Create the user in MongoDB
+            new_user = User(username=data['username'], token=token, password=encrypted_password)
+            new_user.save(validate=True)
+            # Return the token to the frontend
+            resp.status_code = api.status_codes.HTTP_200
+            resp.media = {'token': str(token)}
+        else:
+            resp.status_code = api.status_codes.HTTP_403
+            resp.media = {'message': 'Invalid data sent'}
     except ValidationError as validation_error:
         # Returns the error if the data sent wasn't compliant
         resp.status_code = api.status_codes.HTTP_401
@@ -65,23 +70,28 @@ Returns the token of the user
 @api.route('/api/login')
 async def login(req, resp):
     data = await req.media()
-    # Get the user from the db based on the username
-    user = User.objects.get(username=data['username'])
-    # Check if the user exists
-    if (user):
-        # Check the password
-        if (pwd_context.verify(data['password'], user.password)):
-            # Returns the token if password matches
-            resp.status_code = api.status_codes.HTTP_200
-            resp.media = {'token': user.token}
+    # Check if data sent is valid
+    if 'username' in data and 'password' in data:
+        # Check if the user exists
+        if User.objects(username=data['username']):
+            # Get the user from the db based on the username
+            user = User.objects.get(username=data['username'])
+            # Check the password
+            if pwd_context.verify(data['password'], user.password):
+                # Returns the token if password matches
+                resp.status_code = api.status_codes.HTTP_200
+                resp.media = {'token': user.token}
+            else:
+                # Returns an error if passwords don't match
+                resp.status_code = api.status_codes.HTTP_403
+                resp.media = {'message': 'The password is not correct'}
         else:
-            # Returns an error if passwords don't match
+            # If user doesn't exist, notify the frontend
             resp.status_code = api.status_codes.HTTP_403
-            resp.media = {'message': 'The password is not correct'}
+            resp.media = {'message': 'This username doesn\'t exist'}
     else:
-        # If user doesn't exist, notify the frontend
         resp.status_code = api.status_codes.HTTP_403
-        resp.media = {'message': 'This username doesn\'t exist'}
+        resp.media = {'message': 'Invalid data sent'}
 
 '''
 Route to give the admin role to user
@@ -93,19 +103,23 @@ Parameters :
 '''
 @api.route('/api/make-admin/{id}')
 def make_admin(req, resp, *, id):
-    if (req.method == 'put' or req.method == 'patch'):
-        if (check_token(req.headers['quizz-token'], True, False)):
-            user = User.objects.get(id=id)
-            # Check if the user is a guest
-            if user.guest == True:
-                resp.status_code = api.status_codes.HTTP_403
-                resp.media = {'message': 'user is a guest'}
-            else:
-                user.admin = True
-                user.save(validate=True)
+    if req.method == 'put' or req.method == 'patch':
+        if check_token(req.headers['quizz-token'], True, False):
+            if User.objects(id=id):
+                user = User.objects.get(id=id)
+                # Check if the user is a guest
+                if user.guest == True:
+                    resp.status_code = api.status_codes.HTTP_403
+                    resp.media = {'message': 'user is a guest'}
+                else:
+                    user.admin = True
+                    user.save(validate=True)
 
-                resp.status_code = api.status_codes.HTTP_200
-                resp.media = {'user': user}
+                    resp.status_code = api.status_codes.HTTP_200
+                    resp.media = {'user': user}
+            else:
+                resp.status_code = api.status_codes.HTTP_403
+                resp.media = {'message': 'This user doesn\'t exist'}
         else:
             resp.status_code = api.status_codes.HTTP_403
             resp.media = {'message': 'Not authenticated or not authorized'}
@@ -120,18 +134,22 @@ Parameters :
 '''
 @api.route('/api/make-creator/{id}')
 def make_creator(req, resp, *, id):
-    if (req.method == 'put' or req.method == 'patch'):
-        if (check_token(req.headers['quizz-token'], True, False)):
-            user = User.objects.get(id=id)
-            if user.admin == True or user.guest == True:
-                resp.status_code = api.status_codes.HTTP_200
-                resp.media = {'message': 'User already an admin or a guest'}
-            else:
-                user.creator = True
-                user.save(validate=True)
+    if req.method == 'put' or req.method == 'patch':
+        if check_token(req.headers['quizz-token'], True, False):
+            if User.objects(id=id):
+                user = User.objects.get(id=id)
+                if user.admin == True or user.guest == True:
+                    resp.status_code = api.status_codes.HTTP_200
+                    resp.media = {'message': 'User already an admin or a guest'}
+                else:
+                    user.creator = True
+                    user.save(validate=True)
 
-                resp.status_code = api.status_codes.HTTP_200
-                resp.media = {'user': user}
+                    resp.status_code = api.status_codes.HTTP_200
+                    resp.media = {'user': user}
+            else:
+                resp.status_code = api.status_codes.HTTP_403
+                resp.media = {'message': 'This user doesn\'t exist'}
         else:
             resp.status_code = api.status_codes.HTTP_403
             resp.media = {'message': 'Not authenticated or not authorized'}
@@ -146,18 +164,22 @@ Parameters :
 '''
 @api.route('/api/make-guest/{id}')
 def make_guest(req, resp, *, id):
-    if (req.method == 'put' or req.method == 'patch'):
-        if (check_token(req.headers['quizz-token'], True, False)):
-            user = User.objects.get(id=id)
-            if user.admin == True or user.creator == True:
-                resp.status_code = api.status_codes.HTTP_401
-                resp.media = {'message': 'User already an admin or a creator'}
-            else:
-                user.guest = True
-                user.save(validate=True)
+    if req.method == 'put' or req.method == 'patch':
+        if check_token(req.headers['quizz-token'], True, False):
+            if User.objects(id=id):
+                user = User.objects.get(id=id)
+                if user.admin == True or user.creator == True:
+                    resp.status_code = api.status_codes.HTTP_401
+                    resp.media = {'message': 'User already an admin or a creator'}
+                else:
+                    user.guest = True
+                    user.save(validate=True)
 
-                resp.status_code = api.status_codes.HTTP_200
-                resp.media = {'user': user}
+                    resp.status_code = api.status_codes.HTTP_200
+                    resp.media = {'user': user}
+            else:
+                resp.status_code = api.status_codes.HTTP_403
+                resp.media = {'message': 'This user doesn\'t exist'}
         else:
             resp.status_code = api.status_codes.HTTP_403
             resp.media = {'message': 'Not authenticated or not authorized'}
@@ -174,9 +196,9 @@ Returns a success message on POST
 @api.route('/api/questions')
 async def questions(req, resp):
     # Check the HTTP request method
-    if (req.method == 'get'):
+    if req.method == 'get':
         # Check if user is authenticated
-        if (check_token(req.headers['quizz-token'], False, True)):
+        if check_token(req.headers['quizz-token'], False, True):
             # Get the user
             user = User.objects.get(token=req.headers['quizz-token'])
             resp.status_code = api.status_codes.HTTP_200
@@ -188,9 +210,9 @@ async def questions(req, resp):
         else:
             resp.status_code = api.status_codes.HTTP_403
             resp.media = {'message': 'Not authenticated'}
-    elif (req.method == 'post'):
+    elif req.method == 'post':
         # Check if the user is authenticated and is admin
-        if (check_token(req.headers['quizz-token'], False, True)):
+        if check_token(req.headers['quizz-token'], False, True):
             try:
                 data = await req.media()
                 # Check if the question has at least 2 answers and 4 or less answers
@@ -237,10 +259,10 @@ return the question selected
 async def questions_id(req, resp, *, id):
     # Check if user is authenticated and admin if method is not get
     if check_token(req.headers['quizz-token'], False, True):
-         # Get the question with the id in the request
-        question = Question.objects.get(id=id)
         # Check if question exists
-        if question:
+        if Question.objects(id=id):
+            # Get the question with the id in the request
+            question = Question.objects.get(id=id)
             # Block for get method
             if req.method == 'get':
                 # Return question
@@ -294,7 +316,7 @@ async def questions_id(req, resp, *, id):
                 resp.status_code = api.status_codes.HTTP_401
                 resp.media = {'message': 'Wrong HTTP Verb'}
         else:
-            # Return an error if the question was not foun
+            # Return an error if the question was not found
             resp.status_code = api.status_codes.HTTP_401
             resp.media = {'message': 'Question was not found'}
     else:
@@ -325,8 +347,12 @@ async def quizzes(req, resp):
                 data = await req.media()
                 # Get all questions from array of id
                 for question_id in data['questions']:
-                    quizz_answer = Question.objects.get(id=question_id)
-                    questions.append(quizz_answer)
+                    if Question.objects(id=question_id):
+                        quizz_answer = Question.objects.get(id=question_id)
+                        questions.append(quizz_answer)
+                    else:
+                        resp.status_code = api.status_codes.HTTP_401
+                        resp.media = {'message': f'Question with the id : {question_id} does not exist'}
                 # Check if more than 2 questions
                 if len(questions) >= 2:
                     # Check if data sent has all informations needed
@@ -372,10 +398,10 @@ Returns the quizz that was edited or deleted
 async def quizzes_id(req, resp, *, id):
     # Check if user is authenticated and admin
     if check_token(req.headers['quizz-token'], False, False if req.method == 'get' else True):
-        # Get the quizz from the id in the request
-        quizz = Quizz.objects.get(id=id)
         # Check if the quizz exists
-        if (quizz):
+        if (Quizz.objects(id=id)):
+            # Get the quizz from the id in the request
+            quizz = Quizz.objects.get(id=id)
             if req.method == 'get':
                 questions = []
                 for question in quizz.questions:
@@ -395,8 +421,12 @@ async def quizzes_id(req, resp, *, id):
                         quizz.decription = data['decription']
                         quizz.image = data['image']
                     for question_id in data['questions']:
-                        quizz_answer = Question.objects.get(id=question_id)
-                        questions.append(quizz_answer)
+                        if Question.objects(id=question_id):
+                            quizz_answer = Question.objects.get(id=question_id)
+                            questions.append(quizz_answer)
+                        else:
+                            resp.status_code = api.status_codes.HTTP_401
+                            resp.media = {'message': f'Question with the id : {question_id} does not exist'}
                     if len(questions) >= 2:
                         quizz.questions = questions
                     else:
@@ -444,9 +474,9 @@ Returns a successful message
 async def submit_quizz(req, resp, *, id):
     # Anybody can use this route as long as authenticated
     if check_token(req.headers['quizz-token'], False, False):
-        # Check if the quizz exists
-        quizz = Quizz.objects.get(id=id)
-        if quizz:
+        if Quizz.objects(id=id):
+            # Check if the quizz exists
+            quizz = Quizz.objects.get(id=id)
             data = await req.media()
             # Check if the user is not a guest
             if not check_guest(req.headers['quizz-token']):
