@@ -39,22 +39,23 @@ Returns the token for the user
 @api.route('/api/register')
 async def register(req, resp):
     try:
-        data = await req.media()
-        # Check if data sent is valid
-        if 'username' in data and 'password' in data:
-            # Encrypt the password
-            encrypted_password = pwd_context.encrypt(data['password'])
-            # Create the JWT token from the username and the password
-            token = encrypt(data['username'], encrypted_password)
-            # Create the user in MongoDB
-            new_user = User(username=data['username'], token=token, password=encrypted_password)
-            new_user.save(validate=True)
-            # Return the token to the frontend
-            resp.status_code = api.status_codes.HTTP_200
-            resp.media = {'token': str(token)}
-        else:
-            resp.status_code = api.status_codes.HTTP_403
-            resp.media = {'message': 'Invalid data sent'}
+        if req.method == 'post':
+            data = await req.media()
+            # Check if data sent is valid
+            if 'username' in data and 'password' in data:
+                # Encrypt the password
+                encrypted_password = pwd_context.encrypt(data['password'])
+                # Create the JWT token from the username and the password
+                token = encrypt(data['username'], encrypted_password)
+                # Create the user in MongoDB
+                new_user = User(username=data['username'], token=token, password=encrypted_password)
+                new_user.save(validate=True)
+                # Return the token to the frontend
+                resp.status_code = api.status_codes.HTTP_200
+                resp.media = {'token': str(token)}
+            else:
+                resp.status_code = api.status_codes.HTTP_403
+                resp.media = {'message': 'Invalid data sent'}
     except ValidationError as validation_error:
         # Returns the error if the data sent wasn't compliant
         resp.status_code = api.status_codes.HTTP_401
@@ -69,29 +70,98 @@ Returns the token of the user
 '''
 @api.route('/api/login')
 async def login(req, resp):
-    data = await req.media()
-    # Check if data sent is valid
-    if 'username' in data and 'password' in data:
-        # Check if the user exists
-        if User.objects(username=data['username']):
-            # Get the user from the db based on the username
-            user = User.objects.get(username=data['username'])
-            # Check the password
-            if pwd_context.verify(data['password'], user.password):
-                # Returns the token if password matches
-                resp.status_code = api.status_codes.HTTP_200
-                resp.media = {'token': user.token}
+    if req.method == 'post':
+        data = await req.media()
+        # Check if data sent is valid
+        if 'username' in data and 'password' in data:
+            # Check if the user exists
+            if User.objects(username=data['username']):
+                # Get the user from the db based on the username
+                user = User.objects.get(username=data['username'])
+                # Check the password
+                if pwd_context.verify(data['password'], user.password):
+                    # Returns the token if password matches
+                    resp.status_code = api.status_codes.HTTP_200
+                    resp.media = {'token': user.token}
+                else:
+                    # Returns an error if passwords don't match
+                    resp.status_code = api.status_codes.HTTP_403
+                    resp.media = {'message': 'The password is not correct'}
             else:
-                # Returns an error if passwords don't match
+                # If user doesn't exist, notify the frontend
                 resp.status_code = api.status_codes.HTTP_403
-                resp.media = {'message': 'The password is not correct'}
+                resp.media = {'message': 'This username doesn\'t exist'}
         else:
-            # If user doesn't exist, notify the frontend
             resp.status_code = api.status_codes.HTTP_403
-            resp.media = {'message': 'This username doesn\'t exist'}
+            resp.media = {'message': 'Invalid data sent'}
+
+'''
+Route to get the list of all users
+'''
+@api.route('/api/users')
+def users(req, resp):
+    if 'quizz-token' in req.headers:
+        if check_token(req.headers['quizz-token'], True, False):
+            if req.method == 'get':
+                resp.status_code = api.status_codes.HTTP_200
+                resp.media = {'users': json.loads(User.objects.all().to_json())}
+        else:
+            resp.status_code = api.status_codes.HTTP_403
+            resp.media = {'message': 'Not authenticated or not authorized'}
     else:
         resp.status_code = api.status_codes.HTTP_403
-        resp.media = {'message': 'Invalid data sent'}
+        resp.media = {'message': 'auth token not sent in request'}
+
+'''
+Route to get all informations from a user
+
+Parameters:
+    - id : id of the user
+'''
+@api.route('/api/users/{id}')
+async def users_id(req, resp, *, id):
+    if 'quizz-token' in req.headers:
+        if check_token(req.headers['quizz-token'], False, False):
+            if User.objects(id=id):
+                user = User.objects.get(id=id)
+                if req.method == 'get':
+                    resp.status_code = api.status_codes.HTTP_200
+                    resp.media = {'user': json.loads(user.to_json())}
+                elif req.method == 'put' or req.method == 'patch':
+                    auth_user = User.objects.get(token=req.headers['quizz-token'])
+                    if True if auth_user.id == id else True if check_token(req.headers['quizz-token'], True, False) else False:
+                        data = await req.media()
+                        if 'username' in data:
+                            user.username = data['username']
+                            user.save(validate=True)
+
+                            resp.status_code = api.status_codes.HTTP_200
+                            resp.media = {'user': user}
+                        else:
+                            resp.status_code = api.status_codes.HTTP_401
+                            resp.media = {'message': 'data sent not valid'}
+                    else:
+                        resp.status_code = api.status_codes.HTTP_403
+                        resp.media = {'message': 'Not an admin'}
+
+                elif req.method == 'delete':
+                    if check_token(req.headers['quizz-token'], True, False):
+                        user.delete()
+
+                        resp.status_code = api.status_codes.HTTP_200
+                        resp.media = {'user': user}
+                    else:
+                        resp.status_code = api.status_codes.HTTP_403
+                        resp.media = {'message': 'Not an admin'}
+            else:
+                resp.status_code = api.status_codes.HTTP_401
+                resp.media = {'message': 'This user doesn\'t exist'}
+        else:
+            resp.status_code = api.status_codes.HTTP_403
+            resp.media = {'message': 'Not authenticated or not authorized'}
+    else:
+        resp.status_code = api.status_codes.HTTP_403
+        resp.media = {'message': 'auth token not sent in request'}
 
 '''
 Route to give the admin role to user
