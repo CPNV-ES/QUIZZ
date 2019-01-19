@@ -120,15 +120,21 @@ Parameters:
 '''
 @api.route('/api/users/{id}')
 async def users_id(req, resp, *, id):
+    # Check if the token is sent in the headers
     if 'quizz-token' in req.headers:
+        # Check if user is logged in
         if check_token(req.headers['quizz-token'], False, False):
+            # Check if user exists
             if User.objects(id=id):
                 user = User.objects.get(id=id)
+                # Returns the user if method is get
                 if req.method == 'get':
                     resp.status_code = api.status_codes.HTTP_200
                     resp.media = {'user': json.loads(user.to_json())}
                 elif req.method == 'put' or req.method == 'patch':
+                    # Get the user making the request
                     auth_user = User.objects.get(token=req.headers['quizz-token'])
+                    # Check if the user is trying to update his profile or is and admin
                     if True if auth_user.id == id else True if check_token(req.headers['quizz-token'], True, False) else False:
                         data = await req.media()
                         if 'username' in data:
@@ -145,6 +151,7 @@ async def users_id(req, resp, *, id):
                         resp.media = {'message': 'Not an admin'}
 
                 elif req.method == 'delete':
+                    # Must be an admin to delete an user
                     if check_token(req.headers['quizz-token'], True, False):
                         user.delete()
 
@@ -171,15 +178,20 @@ Parameters:
 '''
 @api.route('/api/change-password/{id}')
 async def change_password(req, resp, *, id):
+    # check if token is sent in the request
     if 'quizz-token' in req.headers:
+        # Check if the user is authenticated
         if check_token(req.headers['quizz-token'], False, False):
             if User.objects(id=id):
                 if req.method == 'put' or req.method == 'patch':
                     data = await req.media()
                     user = User.objects.get(id=id)
                     auth_user = User.objects.get(token=req.headers['quizz-token'])
+                    # Check if the user is trying to update his password or is an admin
                     if True if auth_user.id == id else True if check_token(req.headers['quizz-token'], True, False) else False:
+                        # If the user is an admin, only check if new_password exists. If not, check for old_password and new_password
                         if True if auth_user.admin == True and 'new_password' in data else True if 'old_password' in data and 'new_password' in data else False:
+                            # If user is an admin, just pass. If not, check if the password in db is the same as the one sent in the request
                             if auth_user.admin == True or pwd_context.verify(data['old_password'], user.password):
                                 # Encrypt the password
                                 encrypted_password = pwd_context.hash(data['new_password'])
