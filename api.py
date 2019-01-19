@@ -44,15 +44,15 @@ async def register(req, resp):
             # Check if data sent is valid
             if 'username' in data and 'password' in data:
                 # Encrypt the password
-                encrypted_password = pwd_context.encrypt(data['password'])
+                encrypted_password = pwd_context.hash(data['password'])
                 # Create the JWT token from the username and the password
                 token = encrypt(data['username'], encrypted_password)
                 # Create the user in MongoDB
-                new_user = User(username=data['username'], token=token, password=encrypted_password)
+                new_user = User(username=data['username'], token=token.decode('UTF-8'), password=encrypted_password)
                 new_user.save(validate=True)
                 # Return the token to the frontend
                 resp.status_code = api.status_codes.HTTP_200
-                resp.media = {'token': str(token)}
+                resp.media = {'token': token.decode('UTF-8')}
             else:
                 resp.status_code = api.status_codes.HTTP_403
                 resp.media = {'message': 'Invalid data sent'}
@@ -150,6 +150,52 @@ async def users_id(req, resp, *, id):
 
                         resp.status_code = api.status_codes.HTTP_200
                         resp.media = {'user': user}
+                    else:
+                        resp.status_code = api.status_codes.HTTP_403
+                        resp.media = {'message': 'Not an admin'}
+            else:
+                resp.status_code = api.status_codes.HTTP_401
+                resp.media = {'message': 'This user doesn\'t exist'}
+        else:
+            resp.status_code = api.status_codes.HTTP_403
+            resp.media = {'message': 'Not authenticated or not authorized'}
+    else:
+        resp.status_code = api.status_codes.HTTP_403
+        resp.media = {'message': 'auth token not sent in request'}
+
+'''
+Route to change the password of a user
+
+Parameters:
+    - id : id of the user
+'''
+@api.route('/api/change-password/{id}')
+async def change_password(req, resp, *, id):
+    if 'quizz-token' in req.headers:
+        if check_token(req.headers['quizz-token'], False, False):
+            if User.objects(id=id):
+                if req.method == 'put' or req.method == 'patch':
+                    data = await req.media()
+                    user = User.objects.get(id=id)
+                    auth_user = User.objects.get(token=req.headers['quizz-token'])
+                    if True if auth_user.id == id else True if check_token(req.headers['quizz-token'], True, False) else False:
+                        if True if auth_user.admin == True and 'new_password' in data else True if 'old_password' in data and 'new_password' in data else False:
+                            if auth_user.admin == True or pwd_context.verify(data['old_password'], user.password):
+                                # Encrypt the password
+                                encrypted_password = pwd_context.hash(data['new_password'])
+                                # Create the JWT token from the username and the password
+                                token = encrypt(user.username, encrypted_password)
+                                user.password = encrypted_password
+                                user.token = token.decode('UTF-8')
+                                user.save(validate=True)
+                                resp.status_code = api.status_codes.HTTP_200
+                                resp.media = {'token': token.decode('UTF-8')}
+                            else:
+                                resp.status_code = api.status_codes.HTTP_401
+                                resp.media = {'message': 'old password does not match'}
+                        else:
+                            resp.status_code = api.status_codes.HTTP_401
+                            resp.media = {'message': 'data sent not valid'}
                     else:
                         resp.status_code = api.status_codes.HTTP_403
                         resp.media = {'message': 'Not an admin'}
