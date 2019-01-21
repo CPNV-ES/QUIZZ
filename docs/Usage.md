@@ -38,6 +38,31 @@ Returns :
 
 ## Routes that require basic auth
 
+### PUT/PATCH - /api/users/{id}
+
+Route to update an user profile
+
+Can only update the user if user connected is the same or if the connected user is an admin
+
+### PUT/PATCH - /api/change-password/{id}
+
+Route to change the user password
+
+#### Basic auth
+
+A basic user will need to send the old_password to change it, example payload :
+
+```json
+{
+    "old_password": "Hello123",
+    "new_password": "World123"
+}
+```
+
+#### Admin
+
+The admin can change any user's password and only need to send the new password in the payload
+
 ### GET - /api/quizzes
 
 Route to get the list of quizzes
@@ -192,3 +217,9 @@ Route to give guest role to an user
 Guest role won't be added if user already a creator or an admin
 
 No additional payload needed
+
+### GET - /api/users
+
+Route that returns all users
+
+No payload needed
