@@ -27,7 +27,8 @@ else:
     connect('awa_quizzes')
 
 # Create the responder API instance
-api = responder.API()
+api = responder.API(cors=True)
+api.cors_params = {'allow_origins': ['*']}
 
 '''
 Register endpoint
