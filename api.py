@@ -558,7 +558,7 @@ async def quizzes_id(req, resp, *, id):
                 if req.method == 'get':
                     questions = []
                     for question in quizz.questions:
-                        questions.append({'question': question.question, 'image': question.image, 'answers': question.answers})
+                        questions.append({'id': str(question.pk), 'question': question.question, 'image': question.image, 'answers': question.answers})
                     # Returns question
                     resp.status_code = api.status_codes.HTTP_200
                     resp.media = {'id': str(quizz.pk), 'title': quizz.title, 'description': quizz.description, 'created_by': quizz.created_by.username, 'questions': questions, 'number_participants': quizz.number_participants}
