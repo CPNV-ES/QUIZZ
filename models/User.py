@@ -41,9 +41,6 @@ class User(Document):
         data.pop('password')
         # Remove the token from the json
         data.pop('token')
-        if len(data['scores']) > 0:
-            for index, score in enumerate(data['scores']):
-                data['scores'][index]['quizz_id'] = str(score['quizz_id'])
         # Add a correctly formatted id key in the dict
         data['id'] = str(self.pk)
         # Return the dict as JSON
