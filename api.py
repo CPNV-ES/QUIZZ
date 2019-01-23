@@ -135,14 +135,17 @@ async def users_id(req, resp, *, id):
                     # Get the user making the request
                     auth_user = User.objects.get(token=req.headers['quizz-token'])
                     # Check if the user is trying to update his profile or is and admin
-                    if True if auth_user.id == id else True if check_token(req.headers['quizz-token'], True, False) else False:
+                    if True if str(auth_user.pk) == id else True if check_token(req.headers['quizz-token'], True, False) else False:
                         data = await req.media()
                         if 'username' in data:
                             user.username = data['username']
+                            old_token = decrypt(user.token)
+                            token = encrypt(data['username'], old_token['password'])
+                            user.token = token.decode('UTF-8')
                             user.save(validate=True)
 
                             resp.status_code = api.status_codes.HTTP_200
-                            resp.media = {'user': user}
+                            resp.media = {'token': token.decode('UTF-8')}
                         else:
                             resp.status_code = api.status_codes.HTTP_401
                             resp.media = {'message': 'data sent not valid'}
@@ -643,13 +646,13 @@ async def submit_quizz(req, resp, *, id):
                     found = False
                     for index, score in enumerate(user.scores):
                         # If user already played, check if the score was better than before
-                        if score['quizz_id'] == quizz.pk:
+                        if score['quizz'].id == quizz.pk:
                             found = True
                             if score['score'] < data['score']:
                                 user.scores[index]['score'] = data['score']
                     # Add the quizz if not found and add a participant to the quizz
                     if not found:
-                        user.scores.append({ 'quizz_id': quizz.pk, 'score': data['score'] })
+                        user.scores.append({ 'quizz': { 'id': str(quizz.pk), 'title': quizz.title }, 'score': data['score'] })
                         quizz.number_participants += 1
                         quizz.save(validate=True)
                     user.save(validate=True)
