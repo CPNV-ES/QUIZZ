@@ -576,7 +576,7 @@ async def quizzes_id(req, resp, *, id):
                         questions.append({'id': str(question.pk), 'question': question.question, 'image': question.image, 'answers': question.answers})
                     # Returns question
                     resp.status_code = api.status_codes.HTTP_200
-                    resp.media = {'id': str(quizz.pk), 'title': quizz.title, 'description': quizz.description, 'created_by': quizz.created_by.username, 'questions': questions, 'number_participants': quizz.number_participants}
+                    resp.media = {'id': str(quizz.pk), 'title': quizz.title, 'description': quizz.description, 'image': quizz.image, 'created_by': quizz.created_by.username, 'questions': questions, 'number_participants': quizz.number_participants}
                 # Put/Patch method block
                 if (req.method == 'put' or req.method == 'patch'):
                     try:
