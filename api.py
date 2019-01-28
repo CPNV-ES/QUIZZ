@@ -365,10 +365,10 @@ async def questions(req, resp):
                             answers_not_valid = False
                             for answer in data['answers']:
                                 # Check if the answers have the right attributes
-                                if 'value' not in answer or 'correct' not in answer:
+                                if 'name' not in answer or 'value' not in answer:
                                     answers_not_valid = True
                                 else:
-                                    if isinstance(answer['correct'], bool) and isinstance(answer['value'], str):
+                                    if isinstance(answer['value'], bool) and isinstance(answer['name'], str):
                                         answers_not_valid = False
                                     else:
                                         answers_not_valid = True
@@ -446,10 +446,10 @@ async def questions_id(req, resp, *, id):
                                 answers_not_valid = False
                                 for answer in data['answers']:
                                     # Check if the answers have the right attributes
-                                    if 'value' not in answer or 'correct' not in answer:
+                                    if 'name' not in answer or 'value' not in answer:
                                         answers_not_valid = True
                                     else:
-                                        if isinstance(answer['correct'], bool) and isinstance(answer['value'], str):
+                                        if isinstance(answer['value'], bool) and isinstance(answer['name'], str):
                                             answers_not_valid = False
                                         else:
                                             answers_not_valid = True
