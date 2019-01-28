@@ -531,23 +531,23 @@ async def quizzes(req, resp):
                             resp.media = {'quizz': json.loads(new_quizz.to_json())}
                         else:
                             resp.status_code = api.status_codes.HTTP_401
-                            resp.media = {'type': 'error', 'message': 'Data sent not valid'}
+                            resp.media = {'message': 'Data sent not valid'}
                     else:
                         # Return an error if not 2 questions or more
-                        resp.status_codes = api.status_codes.HTTP_401
-                        resp.media = {'type': 'error', 'message': 'Not enough questions'}
+                        resp.status_code = api.status_codes.HTTP_401
+                        resp.media = {'message': 'Not enough questions'}
                 except ValidationError as validation_error:
                     # Return an error if data not valid
                     resp.status_code = api.status_codes.HTTP_401
-                    resp.media = {'type': 'error', 'message': validation_error}
+                    resp.media = {'message': validation_error}
             else:
                 # Return error if the HTTP Verb is wrong
                 resp.status_code = api.status_codes.HTTP_401
-                resp.media = {'type': 'error', 'message': 'Wrong HTTP Verb'}
+                resp.media = {'message': 'Wrong HTTP Verb'}
         else:
             # Return an error if the user is not authenticated
             resp.status_code = api.status_codes.HTTP_403
-            resp.media = {'type': 'error', 'message': 'Not authenticated'}
+            resp.media = {'message': 'Not authenticated'}
     else:
         resp.status_code = api.status_codes.HTTP_403
         resp.media = {'message': 'auth token not sent in request'}
