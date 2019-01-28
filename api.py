@@ -610,12 +610,13 @@ async def quizzes_id(req, resp, *, id):
                         # Throw an error
                         resp.status_code = api.status_codes.HTTP_401
                         resp.media = {'message': validation_error}
-                elif (req.method is 'delete'):
+                elif (req.method == 'delete'):
                     try:
+                        print('hello')
                         # Delete the quizz
                         quizz.delete()
                         resp.status_code = api.status_codes.HTTP_200
-                        resp.media = {'quizz': quizz}
+                        resp.media = {'quizz': json.loads(quizz.to_json())}
                     except Exception as e:
                         # Throw an error if something occured
                         resp.status_code = api.status_codes.HTTP_401
