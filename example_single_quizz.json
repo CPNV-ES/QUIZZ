@@ -10,12 +10,12 @@
             "image": "test.png",
             "answers": [
                 {
-                    "value": "test",
-                    "correct": false
+                    "name": "test",
+                    "value": false
                 },
                 {
-                    "value": "hello",
-                    "correct": true
+                    "name": "hello",
+                    "value": true
                 }
             ]
         },
@@ -24,12 +24,12 @@
             "image": "hello.png",
             "answers": [
                 {
-                    "value": "test",
-                    "correct": false
+                    "name": "test",
+                    "value": false
                 },
                 {
-                    "value": "hello",
-                    "correct": true
+                    "name": "hello",
+                    "value": true
                 }
             ]
         }
