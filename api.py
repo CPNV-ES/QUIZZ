@@ -604,7 +604,7 @@ async def quizzes_id(req, resp, *, id):
                         quizz.save()
                         # Return the updated quizz
                         resp.status_code = api.status_codes.HTTP_200
-                        resp.media = {'quizz': quizz}
+                        resp.media = {'quizz': json.loads(quizz.to_json())}
                     # Catch a validation error
                     except ValidationError as validation_error:
                         # Throw an error
