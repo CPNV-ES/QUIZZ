@@ -586,7 +586,7 @@ async def quizzes_id(req, resp, *, id):
                         # Update the quizz
                         if 'title' in data and 'description' in data and 'image' in data:
                             quizz.title = data['title']
-                            quizz.decription = data['decription']
+                            quizz.decription = data['description']
                             quizz.image = data['image']
                         for question_id in data['questions']:
                             if Question.objects(id=question_id):
