@@ -361,22 +361,29 @@ async def questions(req, resp):
                     data = await req.media()
                     # Check if the question has at least 2 answers and 4 or less answers
                     if len(data['answers']) >= 2 and len(data['answers']) <= 4:
-                        for answer in data['answers']:
-                            # Check if the answers have the right attributes
-                            if hasattr(answer, 'value') and hasattr(answer, 'correct'):
-                                continue
+                        if 'question' in data and 'image' in data:
+                            answers_not_valid = False
+                            for answer in data['answers']:
+                                # Check if the answers have the right attributes
+                                if 'value' not in answer or 'correct' not in answer:
+                                    answers_not_valid = True
+                                else:
+                                    if isinstance(answer['correct'], bool) and isinstance(answer['value'], str):
+                                        answers_not_valid = False
+                                    else:
+                                        answers_not_valid = True
+                            if not answers_not_valid:
+                                # Get the user to put in created_by
+                                user = User.objects.get(token=req.headers['quizz-token'])
+                                # Create the question
+                                new_question = Question(question=data['question'], image=data['image'], answers=data['answers'], created_by=user)
+                                new_question.save(validate=True)
+                                # Return a successful message to the frontend
+                                resp.status_code = api.status_codes.HTTP_200
+                                resp.media = {'question': json.loads(new_question.to_json())}
                             else:
                                 resp.status_code = api.status_codes.HTTP_401
-                                resp.media = {'message': 'data sent isn\'t valid'}
-                        if 'question' in data and 'image' in data:
-                            # Get the user to put in created_by
-                            user = User.objects.get(token=req.headers['quizz-token'])
-                            # Create the question
-                            new_question = Question(question=data['question'], image=data['image'], answers=data['answers'], created_by=user)
-                            new_question.save(validate=True)
-                            # Return a successful message to the frontend
-                            resp.status_code = api.status_codes.HTTP_200
-                            resp.media = {'question': json.loads(new_question.to_json())}
+                                resp.media = {'message': 'data sent is not valid'}
                     else:
                         resp.status_code = api.status_codes.HTTP_401
                         resp.media = {'message': 'A question must have between 2 and 4 answers'}
@@ -433,26 +440,31 @@ async def questions_id(req, resp, *, id):
                     try:
                         # Get the data from the request
                         data = await req.media()
-                        #Check if there's between 2 and 4 answers
+                        # Check if the question has at least 2 answers and 4 or less answers
                         if len(data['answers']) >= 2 and len(data['answers']) <= 4:
-                            for answer in data['answers']:
-                                # Check if the answers have the right attributes
-                                if hasattr(answer, 'value') and hasattr(answer, 'correct'):
-                                    continue
+                            if 'question' in data and 'image' in data:
+                                answers_not_valid = False
+                                for answer in data['answers']:
+                                    # Check if the answers have the right attributes
+                                    if 'value' not in answer or 'correct' not in answer:
+                                        answers_not_valid = True
+                                    else:
+                                        if isinstance(answer['correct'], bool) and isinstance(answer['value'], str):
+                                            answers_not_valid = False
+                                        else:
+                                            answers_not_valid = True
+                                if not answers_not_valid:
+                                    question.question = data['question']
+                                    question.image = data['image']
+                                    question.answers = data['answers']
+                                    question.save()
+                                    # Return the question if successful
+                                    resp.status_code = api.status_codes.HTTP_200
+                                    resp.media = {'question': json.loads(question.to_json())}
                                 else:
                                     resp.status_code = api.status_codes.HTTP_401
-                                    resp.media = {'message': 'data sent isn\'t valid'}
-                            # Assign the new values and save it
-                            if 'question' in data and 'image' in data:
-                                question.question = data['question']
-                                question.image = data['image']
-                                question.answers = data['answers']
-                                question.save()
-                                # Return the question if successful
-                                resp.status_code = api.status_codes.HTTP_200
-                                resp.media = {'question': json.loads(question.to_json())}
+                                    resp.media = {'message': 'data sent is not valid'}
                         else:
-                            # Return an error if the number answers is incorrect
                             resp.status_code = api.status_codes.HTTP_401
                             resp.media = {'message': 'A question must have between 2 and 4 answers'}
                     # Throw an error if data wasn't valid
